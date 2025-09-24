@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="420" height="420" role="img" aria-labelledby="titleSerpent">
+  <title id="titleSerpent">Icône Serpent stylisé</title>
+  <defs>
+    <linearGradient id="gSnake" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7ed957"/>
+      <stop offset="100%" stop-color="#116530"/>
+    </linearGradient>
+    <radialGradient id="gEye" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffeb3b"/>
+      <stop offset="100%" stop-color="#d84315"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Corps du serpent (spirale) -->
+  <path d="M380 150
+           C340 100, 240 100, 200 160
+           C160 220, 220 260, 280 240
+           C340 220, 380 280, 320 320
+           C260 360, 180 340, 180 280
+           C180 200, 300 180, 360 240"
+        fill="none" stroke="url(#gSnake)" stroke-width="28" stroke-linecap="round"/>
+
+  <!-- Tête du serpent -->
+  <circle cx="380" cy="150" r="30" fill="url(#gSnake)" stroke="#0b3d1a" stroke-width="6"/>
+
+  <!-- Œil -->
+  <circle cx="390" cy="145" r="8" fill="url(#gEye)" stroke="#000" stroke-width="2"/>
+</svg>

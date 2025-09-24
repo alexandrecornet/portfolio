@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Battement de cœur — Maquette v3</title>
+  <style>
+    :root {
+      --bg1: #2a0008;
+      --bg2: #550014;
+      --bg3: #8a001f;
+      --text: #fff6f6;
+      --muted: #ffd6d6cc;
+      --accent: #ff3b64;
+      --accent-2: #ff93a8;
+      --card: #ffffff10;
+      --glass: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.2);
+      --beatDur: 1s; /* Durée d'un cycle de battement (sync son/visuel) */
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif; color: var(--text); }
+
+    body {
+      background: radial-gradient(1200px 800px at 75% 10%, var(--bg3), var(--bg2) 45%, var(--bg1) 100%);
+      background-attachment: fixed;
+    }
+
+    .wrap { min-height: 100%; display: grid; place-items: center; padding: 32px 20px 48px; position: relative; overflow: hidden; }
+
+    /* Canvas particules (plein écran, derrière) */
+    #fx { position: fixed; inset: 0; z-index: 0; pointer-events: none; filter: blur(0.2px) saturate(120%); }
+
+    /* ECG de fond discret (SVG animé) */
+    .wrap::before {
+      content: ""; position: fixed; inset: -10% -10% -10% -10%; pointer-events: none; opacity: 0.10; mix-blend-mode: screen; z-index: 0;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop stop-color="%23ff697f" offset="0"/><stop stop-color="%23ff3b64" offset="1"/></linearGradient></defs><rect width="1200" height="400" fill="none"/><path d="M0 200 H150 L180 120 L195 240 L215 160 L230 200 H350 L380 120 L395 240 L415 160 L430 200 H550 L580 120 L595 240 L615 160 L630 200 H750 L780 120 L795 240 L815 160 L830 200 H950 L980 120 L995 240 L1015 160 L1030 200 H1200" fill="none" stroke="url(%23g)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/></svg>');
+      background-size: 1200px auto; background-repeat: repeat; background-position: 0 50%;
+      animation: ecgMove 12s linear infinite;
+    }
+    @keyframes ecgMove { from { background-position: 0 50%; } to { background-position: -1200px 50%; } }
+
+    .card { position: relative; z-index: 1; width: 100%; max-width: 780px; background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06)); border: 1px solid var(--border); border-radius: 24px; box-shadow: 0 30px 60px rgba(0,0,0,0.35); padding: 28px 24px 32px; backdrop-filter: blur(6px) saturate(120%); }
+
+    /* Effet "glide" ponctuel */
+    .card.glide { animation: glide 0.9s cubic-bezier(.2,.7,.2,1); }
+    @keyframes glide {
+      0% { transform: translateY(0) scale(1); box-shadow: 0 30px 60px rgba(0,0,0,0.35); }
+      20% { transform: translateY(-6px) scale(1.01); box-shadow: 0 40px 70px rgba(0,0,0,0.40); }
+      40% { transform: translateY(0) scale(1); }
+      60% { transform: translateY(-3px) scale(1.005); }
+      100% { transform: translateY(0) scale(1); }
+    }
+    .card::after { content:""; position:absolute; inset:0; background: linear-gradient(75deg, transparent 30%, rgba(255,255,255,0.08) 45%, transparent 60%); transform: translateX(-120%); pointer-events:none; border-radius:24px; }
+    .card.glide::after { animation: sheen 0.9s ease; }
+    @keyframes sheen { to { transform: translateX(120%); } }
+
+    header { display: grid; gap: 14px; justify-items: center; text-align: center; margin-bottom: 12px; }
+    h1 { font-size: clamp(26px, 4vw, 40px); margin: 0; letter-spacing: 0.3px; }
+    p.lead { margin: 0; opacity: 0.9; color: var(--muted); max-width: 60ch; }
+
+    /* Cœur */
+    .heart-wrap { position: relative; display: grid; place-items: center; margin-bottom: 10px; }
+    .heart { width: 86px; height: 86px; filter: drop-shadow(0 8px 22px rgba(255, 59, 100, 0.45)); animation: beat var(--beatDur) ease-in-out infinite; transform-origin: center; }
+    .halo { position: absolute; inset: 0; border-radius: 999px; pointer-events: none; animation: halo var(--beatDur) ease-out infinite; }
+    @keyframes beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.08); } 30% { transform: scale(1); } 45% { transform: scale(1.12); } 60% { transform: scale(1); } }
+    @keyframes halo { 0% { box-shadow: 0 0 0 0 rgba(255,59,100,0.35); } 100% { box-shadow: 0 0 0 22px rgba(255,59,100,0); }
+}
+    /* Formulaire — une seule ligne : Profil | Date | Bouton */
+    form {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 12px;
+      align-items: end;
+      margin-top: 12px;
+    }
+    label { font-size: 14px; color: var(--muted); }
+    input[type="date"], select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--glass);
+      color: var(--text);
+      outline: none;
+      box-shadow: inset 0 0 0 9999px rgba(0,0,0,0.08);
+    }
+    /* Garde une taille “normale” au select */
+    #profile { min-width: 200px; }
+
+    /* Options visibles dans le menu déroulant */
+    select option {
+      background-color: #1a0a0f;
+      color: #fff;
+    }
+
+    .controls { display: flex; gap: 10px; justify-content: center; margin: 12px 0 4px; flex-wrap: wrap; }
+    .btn-secondary { background: linear-gradient(180deg, #2c2c2c80, #1c1c1c70); color: var(--text); box-shadow: 0 8px 18px rgba(0,0,0,0.35); border: 1px solid var(--border); }
+
+    .result { margin-top: 22px; text-align: center; background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.05)); border: 1px solid var(--border); border-radius: 16px; padding: 18px 14px; }
+    .result .number { font-variant-numeric: tabular-nums; font-size: clamp(28px, 6vw, 52px); font-weight: 800; letter-spacing: 0.5px; }
+    .result .unit { opacity: 0.9; color: var(--muted); font-size: 14px; }
+    .small { font-size: 12px; color: var(--muted); }
+
+
+    footer { text-align: center; margin-top: 18px; color: var(--muted); font-size: 12px; }
+
+    /* Accessibilité : focus visible */
+    input[type="date"]:focus-visible, select:focus-visible, button:focus-visible {
+      outline: 2px solid var(--accent-2);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px rgba(255,147,168,0.25);
+    }
+
+    /* Base bouton */
+/* Base bouton (neutralise les styles natifs et pose les bases) */
+button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  border-radius: 14px;
+  padding: 14px 18px;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;                /* évite l’effet “petit bouton” */
+  letter-spacing: .2px;
+  display: inline-flex;          /* centrage propre */
+  align-items: center;
+  justify-content: center;
+  transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
+  will-change: transform, box-shadow, filter;
+}
+
+
+/* Bouton principal (submit) — dégradé rouge, glow doux */
+.btn-primary {
+  color: #fff !important;
+  background:
+    linear-gradient(180deg, var(--accent), #e00043) padding-box,
+    linear-gradient(180deg, rgba(255,255,255,.25), rgba(255,255,255,.05)) border-box !important;
+  border: 1px solid transparent !important;
+  box-shadow:
+    0 12px 26px rgba(255, 59, 100, 0.35),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.btn-primary:hover { filter: brightness(1.04); transform: translateY(-1px); }
+.btn-primary:active { filter: brightness(0.97); transform: translateY(0); }
+.btn-primary:disabled { opacity: .6; cursor: not-allowed; box-shadow: none; }
+
+/* Bouton secondaire (audio) — verre dépoli, bord rouge translucide */
+.btn-secondary {
+  color: var(--text);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04)) padding-box,
+    linear-gradient(180deg, rgba(255,255,255,0.20), rgba(255,255,255,0.06)) border-box;
+  border: 1px solid transparent;
+  box-shadow:
+    0 8px 18px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.10);
+  backdrop-filter: blur(6px) saturate(120%);
+}
+.btn-secondary:hover { filter: brightness(1.03); transform: translateY(-1px); }
+.btn-secondary:active { filter: brightness(0.98); transform: translateY(0); }
+
+/* Anneau d’accessibilité harmonisé */
+button:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(255,147,168,0.25), 0 10px 24px rgba(255, 59, 100, 0.25);
+
+}
+
+/* ==== RESET & BASE BOUTONS ==== */
+button {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important; /* iOS/Safari */
+  border: 0 !important;
+  outline: 0;
+  cursor: pointer;
+  border-radius: 14px;
+  padding: 14px 18px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: .2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
+  will-change: transform, box-shadow, filter;
+}
+
+/* ==== VARIANTES ==== */
+/* Principal (submit) */
+.btn-primary {
+  color: #fff !important;
+  background:
+    linear-gradient(180deg, var(--accent), #e00043) padding-box,
+    linear-gradient(180deg, rgba(255,255,255,.25), rgba(255,255,255,.05)) border-box !important;
+  border: 1px solid transparent !important;
+  box-shadow:
+    0 12px 26px rgba(255, 59, 100, 0.35),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.btn-primary:hover { filter: brightness(1.04); transform: translateY(-1px); }
+.btn-primary:active { filter: brightness(0.97); transform: translateY(0); }
+
+/* Secondaire (audio) */
+.btn-secondary {
+  color: var(--text) !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04)) padding-box,
+    linear-gradient(180deg, rgba(255,255,255,0.20), rgba(255,255,255,0.06)) border-box !important;
+  border: 1px solid transparent !important;
+  box-shadow:
+    0 8px 18px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.10);
+  backdrop-filter: blur(6px) saturate(120%);
+}
+.btn-secondary:hover { filter: brightness(1.03); transform: translateY(-1px); }
+.btn-secondary:active { filter: brightness(0.98); transform: translateY(0); }
+
+/* Focus harmonisé */
+button:focus-visible {
+  outline: 2px solid var(--accent-2) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(255,147,168,0.25), 0 10px 24px rgba(255,59,100,0.25);
+}
+
+/* Mobile : bouton principal plein écran, centré */
+
+@media (max-width: 640px){
+  form { grid-template-columns: 1fr; }
+  .btn-primary { width: 100%; justify-self: stretch; } /* plein écran en mobile */
+}
+
+  </style>
+</head>
+<body>
+  <canvas id="fx"></canvas>
+  <div class="wrap">
+    <main class="card" role="main" aria-labelledby="titre">
+      <header>
+        <div class="heart-wrap" aria-hidden="true">
+          <div class="halo"></div>
+          <!-- Ton image personnalisée -->
+          <img src="../../assets/heart.png" alt="" class="heart" />
+        </div>
+        <h1 id="titre">Combien de battements de cœur<br/>depuis ta naissance&nbsp;?</h1>
+        <p class="lead">Entre ta date de naissance pour estimer, en moyenne, le nombre de battements de cœur vécus jusqu’à aujourd’hui.</p>
+      </header>
+
+      <section aria-label="Formulaire">
+        <!-- Formulaire aligné sur 3 colonnes -->
+        <form id="form">
+          <div>
+            <label for="profile">Profil (bpm moyen)</label>
+            <select id="profile" name="profile">
+              <option value="60">Repos (≈60 bpm)</option>
+              <option value="70" selected>Normal (≈70 bpm)</option>
+              <option value="80">Sportif (≈80 bpm)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="dob">Date de naissance</label>
+            <input id="dob" name="dob" type="date" placeholder="AAAA-MM-JJ" required max="" aria-describedby="hint"/>
+            
+          </div>
+
+          <div>
+<button class="btn-primary" type="submit" aria-label="Calculer le nombre de battements">Calculer</button>
+          </div>
+        </form>
+
+        <!-- Contrôle audio en dessous -->
+        <div class="controls" aria-label="Contrôles">
+          <button id="soundBtn" class="btn-secondary" aria-pressed="false" aria-label="Activer ou couper le son">🔊 Son désactivé</button>
+        </div>
+
+        <div id="result" class="result" hidden role="status" aria-live="polite" aria-atomic="true">
+          <div class="number" id="count">0</div>
+          <div class="unit">battements (estimation)</div>
+          <div class="small" id="meta"></div>
+        </div>
+      </section>
+
+      <footer>
+        Maquette v3 • Hypothèse basée sur un profil sélectionné (bpm). Résultat indicatif.
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // —— Constantes & état ——
+    const fmt = new Intl.NumberFormat('fr-FR');
+    const DAYS = 24*60*60*1000;
+    let currentBpm = 70; // synchronisé avec le select
+
+    // Déductions
+    const beatsPerDay = () => currentBpm * 60 * 24; // bpm × 60 × 24
+
+    // Cap sur aujourd'hui pour la date
+    const todayISO = new Date().toISOString().slice(0,10);
+    const dobEl = document.getElementById('dob');
+    dobEl.setAttribute('max', todayISO);
+
+    // Met à jour la durée d'animation visuelle selon le bpm
+    function syncBeatDuration(){
+      const periodSec = 60 / currentBpm; // secondes par battement
+      document.documentElement.style.setProperty('--beatDur', `${periodSec}s`);
+    }
+    syncBeatDuration();
+
+    // Compteur animé
+    function animateCount(el, to, duration=1500) {
+      const from = 0; const diff = to - from; const start = performance.now();
+      function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+      function frame(now){ const p = Math.min(1, (now - start) / duration); const val = Math.round(from + diff * easeOutCubic(p)); el.textContent = fmt.format(val); if (p < 1) requestAnimationFrame(frame); }
+      requestAnimationFrame(frame);
+    }
+
+    // Calcul principal
+    document.getElementById('form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const dobStr = dobEl.value; if (!dobStr) return;
+      const dob = new Date(dobStr + 'T00:00:00'); const now = new Date(); if (dob > now) return;
+      const livedMs = now - dob; const days = livedMs / DAYS; const est = Math.floor(days * beatsPerDay());
+      const res = document.getElementById('result'); res.hidden = false;
+      animateCount(document.getElementById('count'), est, 1600);
+      const years = Math.floor(days / 365.2425);
+      document.getElementById('meta').textContent = `Âge ≈ ${years} an${years>1?'s':''} • ${fmt.format(Math.round(days))} jours • ${fmt.format(Math.round(beatsPerDay()))} battements/jour (${currentBpm} bpm)`;
+      // Défilement doux vers le résultat
+      requestAnimationFrame(() => {
+        document.getElementById('result')
+          .scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      });
+    });
+
+    // —— Audio : heartbeat lub-dub ——
+    let audioCtx = null, isPlaying = false, beatTimer = null, masterGain = null;
+
+    function ensureAudio(){
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.5; // volume fixe modéré
+        masterGain.connect(audioCtx.destination);
+      }
+    }
+
+    function playKick(time, freq=55) {
+      const ctx = audioCtx; const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.setValueAtTime(freq, time); osc.frequency.exponentialRampToValueAtTime(30, time + 0.08);
+      gain.gain.setValueAtTime(0.0001, time); gain.gain.exponentialRampToValueAtTime(0.6, time + 0.01); gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.18);
+      const lowpass = ctx.createBiquadFilter(); lowpass.type = 'lowpass'; lowpass.frequency.setValueAtTime(320, time); lowpass.Q.value = 0.5;
+      osc.connect(gain).connect(lowpass).connect(masterGain);
+      osc.start(time); osc.stop(time + 0.22);
+    }
+
+    function startHeartbeat() {
+      ensureAudio();
+      const interval = 60000 / currentBpm; // ms par battement
+      const btn = document.getElementById('soundBtn');
+      let next = audioCtx.currentTime + 0.05;
+      function schedule() {
+        playKick(next, 60); // lub
+        playKick(next + 0.10, 50); // dub (~100ms après)
+        next += interval / 1000;
+        beatTimer = setTimeout(schedule, Math.max(50, interval - 120));
+      }
+      schedule();
+      isPlaying = true; btn.textContent = '🔊 Son activé'; btn.setAttribute('aria-pressed', 'true');
+    }
+
+    function stopHeartbeat() {
+      const btn = document.getElementById('soundBtn');
+      if (beatTimer) clearTimeout(beatTimer); beatTimer = null;
+      if (audioCtx && audioCtx.state !== 'closed') { try { audioCtx.suspend(); } catch {} }
+      isPlaying = false; btn.textContent = '🔇 Son désactivé'; btn.setAttribute('aria-pressed', 'false');
+    }
+
+    // Bouton audio
+    document.getElementById('soundBtn').addEventListener('click', async () => {
+      ensureAudio(); if (audioCtx.state === 'suspended') await audioCtx.resume();
+      if (isPlaying) stopHeartbeat(); else { startHeartbeat(); }
+    });
+
+    // Sélecteur de profil (bpm) → sync son & visuel
+    document.getElementById('profile').addEventListener('change', async (e) => {
+      const bpm = parseInt(e.target.value, 10) || 70; currentBpm = bpm; syncBeatDuration();
+      if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+      restartVisualBeat();
+      if (isPlaying) { if (beatTimer) clearTimeout(beatTimer); startHeartbeat(); }
+    });
+
+    // —— Particules & beat visuel indépendant ——
+    const canvas = document.getElementById('fx');
+    const ctx2 = canvas.getContext('2d');
+    let particles = []; let rafId = null; let visTimer = null; let beatCount = 0;
+
+    function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resize); resize();
+
+    function spawnParticles(x, y, count=24){
+      for (let i=0;i<count;i++){
+        const angle = Math.random()*Math.PI*2;
+        const speed = 20 + Math.random()*60;
+        particles.push({
+          x, y,
+          vx: Math.cos(angle)*speed,
+          vy: Math.sin(angle)*speed,
+          life: 0,
+          max: 0.9 + Math.random()*0.9,
+          size: 1 + Math.random()*2,
+          hue: 350 + Math.random()*20 // rouge rosé
+        });
+      }
+    }
+
+    function drawParticles(dt){
+      const dpr = window.devicePixelRatio || 1;
+      ctx2.setTransform(dpr,0,0,dpr,0,0);
+      ctx2.clearRect(0,0,canvas.width,canvas.height);
+      particles = particles.filter(p=>p.life < p.max);
+      for (const p of particles){
+        p.life += dt; const k = p.life / p.max;
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        const alpha = (1-k) * 0.45;
+        ctx2.beginPath();
+        ctx2.fillStyle = `hsla(${p.hue}, 90%, 60%, ${alpha})`;
+        ctx2.arc(p.x, p.y, p.size*(1+2*k), 0, Math.PI*2);
+        ctx2.fill();
+      }
+    }
+
+    let last=performance.now();
+    function loop(now){
+      const dt = Math.min(0.033, (now-last)/1000);
+      last = now;
+      drawParticles(dt);
+      rafId = requestAnimationFrame(loop);
+    }
+    rafId = requestAnimationFrame(loop);
+
+    function visualBeat(){
+      const card = document.querySelector('.card');
+      const rect = card.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height*0.25;
+      spawnParticles(cx, cy, 28);
+      beatCount++;
+      if (beatCount % 10 === 0){ triggerGlide(); }
+    }
+
+    function triggerGlide(){
+      const card = document.querySelector('.card');
+      card.classList.remove('glide');
+      void card.offsetWidth;
+      card.classList.add('glide');
+    }
+
+    function startVisualBeat(){
+      const interval = 60000 / currentBpm;
+      let next = performance.now() + 100;
+      function tick(){
+        visualBeat();
+        next += interval;
+        visTimer = setTimeout(tick, Math.max(50, next - performance.now()));
+      }
+      tick();
+    }
+
+    function stopVisualBeat(){ if (visTimer) clearTimeout(visTimer); visTimer = null; }
+    function restartVisualBeat(){ stopVisualBeat(); startVisualBeat(); }
+    startVisualBeat();
+  </script>
+</body>
+</html>

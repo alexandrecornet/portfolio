@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Générateur de motif aléatoire</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg: #0b0e14;
+      --panel: #121826;
+      --muted: #9aa4b2;
+      --text: #e5e7eb;
+      --accent: #7c3aed;
+      --accent-2: #22d3ee;
+      --ring: #334155;
+      --shadow: 0 10px 25px rgba(0,0,0,.35);
+      --radius: 16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background: radial-gradient(1200px 800px at 20% -10%, #1f2937 0%, #0b0e14 60% 100%);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color:var(--text);
+      display:flex; flex-direction:column;
+    }
+    header{padding:18px 22px; display:flex; align-items:center; gap:12px}
+    header h1{font-size:1.1rem; margin:0; font-weight:800; letter-spacing: .2px}
+    header .badge{font-size:.75rem; color:#0b0e14; background:linear-gradient(90deg, var(--accent), var(--accent-2)); padding:4px 8px; border-radius:999px; font-weight:700}
+    main{display:grid; grid-template-columns: 320px 1fr; gap:18px; padding:18px; height:calc(100% - 66px)}
+
+    /* Panel */
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.00));
+      border:1px solid rgba(148,163,184,.15);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .controls{ padding:16px; display:flex; flex-direction:column; gap:14px; }
+    .group{display:flex; flex-direction:column; gap:8px}
+    .label{font-size:.78rem; color:var(--muted); letter-spacing:.2px}
+    .row{display:flex; gap:10px; align-items:center}
+    input[type="range"]{width:100%}
+    input[type="text"], select{
+      width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--ring); background:#0f1523; color:var(--text);
+      outline:none; box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    input[type="text"]:focus, select:focus{ border-color: var(--accent-2); box-shadow:0 0 0 3px rgba(34,211,238,.2) }
+    .btn{
+      border:none; padding:10px 14px; font-weight:700; color:#0b0e14; background:linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius:12px; cursor:pointer;
+      transition: transform .06s ease; will-change: transform; letter-spacing:.2px
+    }
+    .btn:active{ transform: translateY(1px) }
+    .btn.secondary{ background:#0f1523; color:var(--text); border:1px solid var(--ring) }
+    .chips{display:flex; flex-wrap:wrap; gap:8px}
+    .chip{padding:6px 10px; border-radius:999px; border:1px solid var(--ring); background:#0f1523; color:var(--text); font-size:.8rem; cursor:pointer}
+    .chip.active{border-color:var(--accent-2); box-shadow:0 0 0 2px rgba(34,211,238,.15) inset}
+
+    /* Canvas area */
+    .stage{ position:relative; display:grid; grid-template-rows:auto 1fr; }
+    .toolbar{ padding:12px; display:flex; gap:10px; justify-content:flex-end; border-bottom:1px solid rgba(148,163,184,.15) }
+    canvas{ width:100%; height:100%; display:block; border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius) }
+
+    footer{padding:12px 18px; color:var(--muted); font-size:.8rem}
+    .kbd{border:1px solid var(--ring); border-bottom-width:2px; padding:2px 6px; border-radius:6px; background:#0f1523; color:var(--text); font-weight:600}
+
+    @media (max-width: 900px){
+      main{ grid-template-columns: 1fr; grid-template-rows: auto 1fr }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="badge">JS</span>
+    <h1>Générateur de motif aléatoire</h1>
+  </header>
+
+  <main>
+    <!-- Controls -->
+    <section class="panel">
+      <div class="controls">
+        <div class="group">
+          <div class="label">Type de motif</div>
+          <div class="chips" id="patternChips"></div>
+        </div>
+
+        <div class="group">
+          <div class="label">Palette</div>
+          <select id="paletteSelect"></select>
+        </div>
+
+        <div class="group">
+          <div class="label">Grille (colonnes)</div>
+          <div class="row">
+            <input id="cols" type="range" min="4" max="64" step="1" value="16" />
+            <span id="colsVal">16</span>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="label">Marge (%)</div>
+          <div class="row">
+            <input id="margin" type="range" min="0" max="20" step="1" value="8" />
+            <span id="marginVal">8</span>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="label">Grain aléatoire (seed)</div>
+          <div class="row">
+            <input id="seed" type="text" placeholder="ex: lune-dencre-42" />
+            <button class="btn secondary" id="randomSeed">Aléa</button>
+          </div>
+        </div>
+
+        <div class="group row" style="justify-content:space-between">
+          <button class="btn" id="btnDraw">Régénérer (R)</button>
+          <button class="btn secondary" id="btnExport">Exporter PNG</button>
+          <label class="row" style="gap:6px; font-size:.9rem"><input type="checkbox" id="animate"/> Animer</label>
+        </div>
+
+        <div class="group" style="margin-top:6px">
+          <div class="label">Astuces</div>
+          <div style="font-size:.85rem; color:var(--muted)">
+            Appuie sur <span class="kbd">R</span> pour régénérer, <span class="kbd">S</span> pour exporter, <span class="kbd">A</span> pour (dés)activer l'animation.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Canvas / stage -->
+    <section class="panel stage">
+      <div class="toolbar">
+        <span style="margin-right:auto; color:var(--muted); font-size:.9rem" id="meta"></span>
+        <button class="btn secondary" id="fitBtn">Adapter à l'écran</button>
+        <button class="btn secondary" id="squareBtn">Carré 1024</button>
+      </div>
+      <canvas id="c"></canvas>
+    </section>
+  </main>
+
+  <footer>
+    Fait avec ❤️ et un RNG déterministe (Mulberry32). Expérimente différentes seeds et palettes pour des résultats uniques.
+  </footer>
+
+  <script>
+    // ===== Utilitaires RNG déterministe =====
+    function xfnv1a(str){
+      let h = 2166136261 >>> 0;
+      for (let i=0; i<str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return () => h >>> 0;
+    }
+    function mulberry32(a){
+      return function(){
+        let t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      }
+    }
+    function seeded(str){
+      const seed = xfnv1a(str)();
+      return mulberry32(seed);
+    }
+
+    // Helpers
+    const randInt = (rng, min, max) => Math.floor(rng()*(max-min+1))+min;
+    const pick = (rng, arr) => arr[Math.floor(rng()*arr.length)];
+    const lerp = (a,b,t)=>a+(b-a)*t;
+
+    // ===== Palettes (Coolors + perso) =====
+    const PALETTES = {
+      "Solaire": ["#f59e0b","#fde68a","#1f2937","#ef4444","#10b981"],
+      "Glacier": ["#e0f2fe","#7dd3fc","#0ea5e9","#1e293b","#f1f5f9"],
+      "Néon Nocturne": ["#0f172a","#22d3ee","#a78bfa","#f472b6","#f59e0b"],
+      "Terre Cuite": ["#f4e9cd","#c4661f","#6b3e2e","#2c2a29","#d7a86e"],
+      "Forêt": ["#1b4332","#2d6a4f","#95d5b2","#b7e4c7","#081c15"],
+      "Pastel": ["#fde2e4","#bee1e6","#e2ece9","#cddafd","#dfe7fd"],
+      "Retro Pop": ["#2b2d42","#ef233c","#ffd166","#06d6a0","#118ab2"],
+      "Monochrome": ["#0f172a","#1f2937","#334155","#64748b","#e5e7eb"],
+    };
+
+    const PATTERNS = [
+      { id: 'tri', name:'Triangles'},
+      { id: 'sq', name:'Carrés'},
+      { id: 'circ', name:'Confetti (cercles)'},
+      { id: 'lines', name:'Lignes ondulées'},
+      { id: 'weave', name:'Tissage'},
+    ];
+
+    // ===== Elements =====
+    const DOM = {
+      canvas: document.getElementById('c'),
+      meta: document.getElementById('meta'),
+      palette: document.getElementById('paletteSelect'),
+      chips: document.getElementById('patternChips'),
+      cols: document.getElementById('cols'),
+      colsVal: document.getElementById('colsVal'),
+      margin: document.getElementById('margin'),
+      marginVal: document.getElementById('marginVal'),
+      seed: document.getElementById('seed'),
+      animate: document.getElementById('animate'),
+      btnDraw: document.getElementById('btnDraw'),
+      btnExport: document.getElementById('btnExport'),
+      randomSeed: document.getElementById('randomSeed'),
+      fitBtn: document.getElementById('fitBtn'),
+      squareBtn: document.getElementById('squareBtn'),
+    };
+
+    // State
+    const state = {
+      pattern: PATTERNS[0].id,
+      palette: Object.keys(PALETTES)[2],
+      seed: 'lune-dencre-42',
+      cols: 16,
+      marginPct: 8,
+      anim: false,
+      frame: 0,
+      raf: null,
+    };
+
+    // Init UI
+    function initUI(){
+      // palette options
+      for(const key of Object.keys(PALETTES)){
+        const opt = document.createElement('option');
+        opt.value = key; opt.textContent = key; DOM.palette.appendChild(opt);
+      }
+      DOM.palette.value = state.palette;
+
+      // chips for patterns
+      for(const p of PATTERNS){
+        const el = document.createElement('button');
+        el.className = 'chip' + (p.id===state.pattern?' active':'');
+        el.textContent = p.name; el.dataset.id = p.id;
+        el.addEventListener('click', ()=>{ state.pattern=p.id; refreshChips(); draw() });
+        DOM.chips.appendChild(el);
+      }
+
+      DOM.cols.value = state.cols; DOM.colsVal.textContent = state.cols;
+      DOM.margin.value = state.marginPct; DOM.marginVal.textContent = state.marginPct;
+      DOM.seed.value = state.seed;
+      DOM.animate.checked = state.anim;
+
+      DOM.cols.addEventListener('input', ()=>{ state.cols=+DOM.cols.value; DOM.colsVal.textContent=DOM.cols.value; draw() });
+      DOM.margin.addEventListener('input', ()=>{ state.marginPct=+DOM.margin.value; DOM.marginVal.textContent=DOM.margin.value; draw() });
+      DOM.palette.addEventListener('change', ()=>{ state.palette=DOM.palette.value; draw() });
+      DOM.seed.addEventListener('change', ()=>{ state.seed = DOM.seed.value || 'seed'; draw() });
+      DOM.randomSeed.addEventListener('click', ()=>{ state.seed = (Math.random()+1).toString(36).slice(2); DOM.seed.value=state.seed; draw() });
+
+      DOM.btnDraw.addEventListener('click', draw);
+      DOM.btnExport.addEventListener('click', exportPNG);
+      DOM.fitBtn.addEventListener('click', ()=> resizeToFit());
+      DOM.squareBtn.addEventListener('click', ()=> resizeFixed(1024,1024));
+
+      DOM.animate.addEventListener('change', ()=>{ state.anim = DOM.animate.checked; toggleAnim() });
+
+      window.addEventListener('resize', ()=> resizeToFit());
+      document.addEventListener('keydown', (e)=>{
+        if(e.key==='r' || e.key==='R'){ e.preventDefault(); draw(); }
+        if(e.key==='s' || e.key==='S'){ e.preventDefault(); exportPNG(); }
+        if(e.key==='a' || e.key==='A'){ e.preventDefault(); DOM.animate.checked=!DOM.animate.checked; state.anim=DOM.animate.checked; toggleAnim(); }
+      });
+
+      resizeToFit();
+    }
+
+    function refreshChips(){
+      [...DOM.chips.children].forEach(ch=>{
+        ch.classList.toggle('active', ch.dataset.id===state.pattern);
+      });
+    }
+
+    // Canvas helpers
+    function getCtx(){
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio||1));
+      const rect = DOM.canvas.getBoundingClientRect();
+      DOM.canvas.width = Math.floor(rect.width * dpr);
+      DOM.canvas.height = Math.floor(rect.height * dpr);
+      const ctx = DOM.canvas.getContext('2d');
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      return ctx;
+    }
+
+    function resizeToFit(){
+      // Make stage roughly square minus controls toolbar height accounted by CSS
+      // Canvas fills its container automatically; just redraw
+      draw();
+    }
+    function resizeFixed(w,h){
+      // Temporarily set explicit size via style
+      DOM.canvas.style.width = w+'px';
+      DOM.canvas.style.height = h+'px';
+      draw();
+    }
+
+    function exportPNG(){
+      const link = document.createElement('a');
+      link.download = `motif_${state.pattern}_${state.seed}.png`;
+      link.href = DOM.canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    // ===== Rendu =====
+    function draw(){
+      cancelAnimationFrame(state.raf);
+      const ctx = getCtx();
+      const {width, height} = ctx.canvas;
+      // background
+      ctx.save();
+      const grad = ctx.createLinearGradient(0,0,width, height);
+      grad.addColorStop(0,'#0b0e14'); grad.addColorStop(1,'#0f1523');
+      ctx.fillStyle = grad; ctx.fillRect(0,0,width, height);
+      ctx.restore();
+
+      const rng = seeded(state.seed);
+      const palette = PALETTES[state.palette];
+      const pad = Math.floor(Math.min(width,height) * state.marginPct/100);
+      const w = width - pad*2, h = height - pad*2;
+      const cols = state.cols;
+      const rows = Math.max(4, Math.round(cols * h / w));
+      const cw = w / cols, ch = h / rows;
+
+      // meta
+      DOM.meta.textContent = `${cols}×${rows} • ${state.palette} • seed: ${state.seed}`;
+
+      // grid background (subtle)
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148,163,184,.08)';
+      for(let i=0;i<=cols;i++){ ctx.beginPath(); ctx.moveTo(pad+i*cw, pad); ctx.lineTo(pad+i*cw, pad+h); ctx.stroke(); }
+      for(let j=0;j<=rows;j++){ ctx.beginPath(); ctx.moveTo(pad, pad+j*ch); ctx.lineTo(pad+w, pad+j*ch); ctx.stroke(); }
+      ctx.restore();
+
+      // Draw chosen pattern
+      const map = {
+        tri: drawTriangles,
+        sq: drawSquares,
+        circ: drawCircles,
+        lines: drawWaves,
+        weave: drawWeave,
+      };
+      map[state.pattern](ctx, rng, palette, {pad, w, h, cols, rows, cw, ch});
+
+      if(state.anim){ loop(); }
+    }
+
+    // === Patterns ===
+    function drawTriangles(ctx, rng, palette, g){
+      const {pad, cols, rows, cw, ch} = g;
+      for(let y=0;y<rows;y++){
+        for(let x=0;x<cols;x++){
+          const x0 = pad + x*cw, y0 = pad + y*ch;
+          const flip = rng()>.5;
+          const c1 = pick(rng, palette), c2 = pick(rng, palette);
+          ctx.beginPath();
+          if(flip){ ctx.moveTo(x0, y0); ctx.lineTo(x0+cw, y0); ctx.lineTo(x0, y0+ch); }
+          else { ctx.moveTo(x0+cw, y0); ctx.lineTo(x0+cw, y0+ch); ctx.lineTo(x0, y0+ch); }
+          ctx.closePath(); ctx.fillStyle=c1; ctx.fill();
+          ctx.beginPath();
+          if(flip){ ctx.moveTo(x0+cw, y0); ctx.lineTo(x0+cw, y0+ch); ctx.lineTo(x0, y0+ch); }
+          else { ctx.moveTo(x0, y0); ctx.lineTo(x0+cw, y0); ctx.lineTo(x0, y0+ch); }
+          ctx.closePath(); ctx.fillStyle=c2; ctx.fill();
+        }
+      }
+    }
+
+    function drawSquares(ctx, rng, palette, g){
+      const {pad, cols, rows, cw, ch} = g;
+      for(let y=0;y<rows;y++){
+        for(let x=0;x<cols;x++){
+          const x0 = pad + x*cw, y0 = pad + y*ch;
+          const m = Math.min(cw,ch);
+          const size = m * lerp(.6, .98, rng());
+          const dx = (cw-size)/2, dy=(ch-size)/2;
+          ctx.fillStyle = pick(rng, palette);
+          ctx.fillRect(x0+dx, y0+dy, size, size);
+        }
+      }
+    }
+
+    function drawCircles(ctx, rng, palette, g){
+      const {pad, cols, rows, cw, ch} = g;
+      for(let y=0;y<rows;y++){
+        for(let x=0;x<cols;x++){
+          const x0 = pad + x*cw + cw/2, y0 = pad + y*ch + ch/2;
+          const r = Math.min(cw,ch)*.48 * lerp(.4,.98,rng());
+          ctx.beginPath(); ctx.arc(x0,y0,r,0,Math.PI*2);
+          ctx.fillStyle = pick(rng, palette); ctx.fill();
+        }
+      }
+    }
+
+    function drawWaves(ctx, rng, palette, g){
+      const {pad, w, h} = g;
+      const lines = 24;
+      for(let i=0;i<lines;i++){
+        const y = pad + (h/(lines-1))*i;
+        const amp = lerp(6, 40, rng());
+        const freq = lerp(.005, .02, rng());
+        const phase = rng()*Math.PI*2;
+        ctx.beginPath();
+        for(let x=pad; x<=pad+w; x++){
+          const t = x*freq + phase + (state.frame*0.02);
+          const yy = y + Math.sin(t)*amp;
+          if(x===pad) ctx.moveTo(x,yy); else ctx.lineTo(x,yy);
+        }
+        ctx.lineWidth = lerp(1,4,rng());
+        ctx.strokeStyle = pick(rng, palette);
+        ctx.stroke();
+      }
+    }
+
+    function drawWeave(ctx, rng, palette, g){
+      const {pad, w, h, cols, rows, cw, ch} = g;
+      // background fill with a palette color
+      ctx.fillStyle = palette[0];
+      ctx.fillRect(pad, pad, w, h);
+
+      // vertical strips
+      for(let x=0; x<cols; x++){
+        const x0 = pad + x*cw + cw*0.1;
+        const wStrip = cw*0.8;
+        ctx.fillStyle = pick(rng, palette);
+        ctx.fillRect(x0, pad, wStrip, h);
+      }
+      // horizontal strips interleaving
+      for(let y=0; y<rows; y++){
+        const y0 = pad + y*ch + ch*0.1;
+        const hStrip = ch*0.8;
+        ctx.save();
+        // create gaps to fake over/under
+        for(let x=0; x<cols; x++){
+          const x0 = pad + x*cw + cw*0.1;
+          const wStrip = cw*0.8;
+          if((x+y)%2===0){
+            ctx.clearRect(x0, y0, wStrip, hStrip);
+          }
+        }
+        ctx.restore();
+        ctx.fillStyle = pick(rng, palette);
+        ctx.fillRect(pad, y0, w, hStrip);
+      }
+    }
+
+    function loop(){
+      state.frame++;
+      draw();
+      state.raf = requestAnimationFrame(loop);
+    }
+
+    function toggleAnim(){
+      if(state.anim){ state.frame=0; loop(); }
+      else { cancelAnimationFrame(state.raf); }
+    }
+
+    // Boot
+    initUI();
+    draw();
+  </script>
+</body>
+</html>

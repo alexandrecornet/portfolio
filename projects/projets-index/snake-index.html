@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Snake à segments-perso (JS, 1 fichier)</title>
+  <style>
+    :root{
+      --bg:#0f1220; --panel:#161a2e; --accent:#6ee7ff; --good:#7CFC00; --bad:#ff6b6b; --text:#e8ecff;
+      --grid:#1e2342; --shadow: rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:radial-gradient(1200px 800px at 20% 10%, #182041 0%, #0f1220 60%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
+    .wrap{display:grid;grid-template-columns:1fr 320px;gap:16px;height:100%;padding:16px}
+    .panel{background:linear-gradient(180deg, #1a1f3a 0%, #14182c 100%);border:1px solid #242a51;border-radius:16px;box-shadow:0 10px 30px var(--shadow);padding:14px}
+    #board{width:100%;height:100%;display:grid;place-items:center}
+    canvas{border-radius:16px;border:1px solid #2a3163;box-shadow:0 10px 40px var(--shadow);background:linear-gradient(180deg,#0b0f1f 0%,#0a0d1a 100%)}
+    h1{font-size:18px;margin:0 0 8px;letter-spacing:.2px}
+    .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .badge{display:inline-flex;align-items:center;gap:6px;background:#11162a;border:1px solid #2b346a;border-radius:999px;padding:6px 10px;font-size:12px}
+    .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+    .legend{display:grid;grid-template-columns:1fr;gap:10px}
+    .legend .item{display:flex;align-items:center;gap:10px;background:#10152a;border:1px solid #262e63;border-radius:12px;padding:10px}
+    .item small{opacity:.8}
+    .kbd{display:inline-block;border:1px solid #3a447e;background:#0e1226;padding:2px 6px;border-radius:6px;font-size:12px}
+    .muted{opacity:.75}
+    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:8px}
+    .card{background:#0f142b;border:1px solid #2b346a;border-radius:12px;padding:10px}
+    .toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);background:#0e142c;border:1px solid #4050b8;color:#cfe4ff;padding:10px 14px;border-radius:10px;box-shadow:0 10px 30px var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s, transform .25s}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(4px)}
+    .footer{font-size:12px;opacity:.8;margin-top:8px}
+    @media (max-width:980px){.wrap{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="board" class="panel">
+      <canvas id="game" width="720" height="480" aria-label="Snake"></canvas>
+      <div class="toast" id="toast"></div>
+    </div>
+    <aside class="panel">
+      <h1>Snake à segments-personnages</h1>
+      <div class="muted" style="margin-bottom:8px">Chaque nouveau segment est un « perso » avec un effet passif. Empile les synergies !</div>
+      <div class="stats">
+        <div class="card"><div class="muted">Score</div><div id="uiScore" style="font-size:22px">0</div></div>
+        <div class="card"><div class="muted">Vitesse</div><div id="uiSpeed" style="font-size:22px">1.00x</div></div>
+        <div class="card"><div class="muted">Longueur</div><div id="uiLen" style="font-size:22px">1</div></div>
+        <div class="card"><div class="muted">Boucliers</div><div id="uiShield" style="font-size:22px">0</div></div>
+      </div>
+      <div style="height:8px"></div>
+      <div class="legend" id="legend"></div>
+      <div style="height:8px"></div>
+      <div class="card">
+        <div class="muted" style="margin-bottom:6px">Contrôles</div>
+        <div>Flèches / <span class="kbd">WASD</span> pour bouger, <span class="kbd">Espace</span> pause, <span class="kbd">R</span> recommencer.</div>
+      </div>
+      <div class="footer">Projet 1‑fichier (HTML+CSS+JS). Aucun asset externe. Code commenté.</div>
+    </aside>
+  </div>
+
+<script>
+(function(){
+  // === Paramètres du jeu ===
+  const CELL = 24;                 // taille d'une cellule en px
+  const GRID_W = 30, GRID_H = 20;  // grille logique (=> canvas 720x480)
+  const BASE_FPS = 8;              // rythme de base (cases/seconde)
+  const FOOD_COUNT = 1;            // nombre de nourritures simultanées
+
+  // Types d'effets possibles pour les segments
+  const EFFECTS = [
+    {key:'turbo',   name:'Turbo',         desc:'+3% vitesse / segment (max 2x)',    color:'#60e7ff'},
+    {key:'score',   name:'Score+',        desc:'+1 score / nourriture',             color:'#ffd166'},
+    {key:'shield',  name:'Bouclier',      desc:'Ignore 1 collision (consomme 1)',   color:'#7CFC00'},
+    {key:'magnet',  name:'Aimant',        desc:'Attire la nourriture proximité',     color:'#b294ff'},
+    {key:'wrap',    name:'Wrap murs',     desc:'Traverse les bords (wrap)',          color:'#64e1a7'},
+    {key:'ghost',   name:'Fantôme',       desc:'Ignore 1 auto-collision',            color:'#ff9ed6'},
+    {key:'shed',    name:'Mue',           desc:'Perd la queue périodiquement (-1)',  color:'#8bd3dd'},
+  ];
+
+  // Pondération d'apparition (somme non normalisée)
+  const EFFECT_WEIGHTS = {
+    turbo:3, score:3, shield:2, magnet:2, wrap:2, ghost:1, shed:1
+  };
+
+  // === Utilitaires ===
+  const randInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a; // inclusif
+  const chooseWeighted=(weights)=>{
+    const entries = Object.entries(weights);
+    const total = entries.reduce((s,[,w])=>s+w,0);
+    let r = Math.random()*total;
+    for(const [k,w] of entries){ if((r-=w)<=0) return k; }
+    return entries[0][0];
+  };
+  const keyToEffect = (k)=>EFFECTS.find(e=>e.key===k);
+
+  // === Canvas & UI ===
+  const cvs = document.getElementById('game');
+  const ctx = cvs.getContext('2d');
+  const uiScore = document.getElementById('uiScore');
+  const uiSpeed = document.getElementById('uiSpeed');
+  const uiLen   = document.getElementById('uiLen');
+  const uiShield= document.getElementById('uiShield');
+  const legend  = document.getElementById('legend');
+  const toastEl = document.getElementById('toast');
+
+  // Rendu de la légende effets
+  function renderLegend(counts){
+    legend.innerHTML = '';
+    for(const eff of EFFECTS){
+      const n = counts[eff.key]||0;
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = `<span class="dot" style="background:${eff.color}"></span>
+        <div style="flex:1">
+          <div style="font-weight:600">${eff.name} <span class="muted">×${n}</span></div>
+          <small>${eff.desc}</small>
+        </div>`;
+      legend.appendChild(el);
+    }
+  }
+
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(()=>toastEl.classList.remove('show'), 1600);
+  }
+
+  // === Modèle de jeu ===
+  const DIRS = {Left:{x:-1,y:0}, Right:{x:1,y:0}, Up:{x:0,y:-1}, Down:{x:0,y:1}};
+  let state;
+
+  function newGame(){
+    state = {
+      snake: [
+        {x: Math.floor(GRID_W/2), y: Math.floor(GRID_H/2), effect: null, color:'#9ad1ff'}
+      ],
+      dir: DIRS.Right,
+      nextDir: DIRS.Right,
+      pending: 0,
+      foods: [],
+      score: 0,
+      tick: 0,
+      paused: false,
+      over: false,
+      // effets globaux agrégés (derivés des segments)
+      counts: {},
+      speedMul: 1,
+      shields: 0,
+      ghosts: 0,
+      wrapWalls: false,
+      magnetR: 0,
+      shedTimer: 0,
+    };
+    // reset inputs
+    inputQueue.length = 0;
+    spawnFoods();
+    recomputeEffects();
+    updateUI();
+  }
+
+  // Calcul des effets à partir des segments
+  function recomputeEffects(){
+    const counts = {};
+    for(const s of state.snake){ if(s.effect){ counts[s.effect] = (counts[s.effect]||0)+1; } }
+    state.counts = counts;
+    // vitesse
+    const turbo = counts.turbo||0;
+    state.speedMul = Math.min(2.0, 1 + 0.03*turbo);
+    // boucliers (charges persistantes = nb total de segments bouclier)
+    state.shields = counts.shield||0;
+    // fantômes = charges d'auto-collision
+    state.ghosts = counts.ghost||0;
+    // wrap
+    state.wrapWalls = (counts.wrap||0) > 0;
+    // aimant (cases)
+    state.magnetR = (counts.magnet||0) * 2;
+    // mue
+    // timer de mue diminue avec le nombre de segments mue => mue plus fréquente
+    state.shedEvery = (counts.shed||0) ? Math.max(18, 60 - (counts.shed*6)) : null; // en ticks
+    renderLegend(counts);
+  }
+
+  function spawnFoods(){
+    while(state.foods.length < FOOD_COUNT){
+      let p;
+      do{ p = {x:randInt(0,GRID_W-1), y:randInt(0,GRID_H-1)}; }
+      while(occupiesSnake(p.x,p.y));
+      state.foods.push(p);
+    }
+  }
+
+  function occupiesSnake(x,y){
+    return state.snake.some(s=>s.x===x && s.y===y);
+  }
+
+  // Ajout d'un segment avec un effet aléatoire
+  function addSegment(){
+    const key = chooseWeighted(EFFECT_WEIGHTS);
+    const eff = keyToEffect(key);
+    const seg = {x: state.snake[state.snake.length-1].x, y: state.snake[state.snake.length-1].y, effect: eff.key, color: eff.color};
+    state.snake.push(seg);
+    toast(`+1 segment: ${eff.name}`);
+    recomputeEffects();
+  }
+
+  // === Entrées ===
+  const inputQueue = [];
+  window.addEventListener('keydown', (e)=>{
+    const k = e.key.toLowerCase();
+    if(k===' '){ state.paused = !state.paused; return; }
+    if(k==='r'){ newGame(); return; }
+    if(['arrowleft','a'].includes(k)) queueDir(DIRS.Left);
+    else if(['arrowright','d'].includes(k)) queueDir(DIRS.Right);
+    else if(['arrowup','w'].includes(k)) queueDir(DIRS.Up);
+    else if(['arrowdown','s'].includes(k)) queueDir(DIRS.Down);
+  });
+  function queueDir(d){ inputQueue.push(d); }
+
+  function consumeInput(){
+    while(inputQueue.length){
+      const d = inputQueue.shift();
+      // interdire demi-tour instantané
+      if((d.x + state.dir.x)===0 && (d.y + state.dir.y)===0) continue;
+      state.nextDir = d; break;
+    }
+  }
+
+  // === Boucle de jeu ===
+  let lastT = 0, acc = 0; // accumulateur pour avancer à vitesse logique
+  function loop(t){
+    requestAnimationFrame(loop);
+    if(state.over || state.paused) { draw(); return; }
+    const dt = (t - lastT) / 1000 || 0; lastT = t;
+    const step = 1 / (BASE_FPS * state.speedMul);
+    acc += dt;
+    while(acc >= step){
+      acc -= step;
+      tick();
+    }
+    draw();
+  }
+
+  function tick(){
+    state.tick++;
+    consumeInput();
+    state.dir = state.nextDir;
+
+    // Mue (shed): enlève un segment de queue périodiquement
+    if(state.shedEvery){
+      if(++state.shedTimer >= state.shedEvery && state.snake.length>2){
+        state.shedTimer = 0;
+        state.snake.pop();
+        toast('Mue : -1 segment');
+        recomputeEffects();
+      }
+    }
+
+    // Aimant: déplace la nourriture vers la tête si proche
+    if(state.magnetR>0){
+      const head = state.snake[0];
+      for(const f of state.foods){
+        const dx = f.x - head.x, dy = f.y - head.y;
+        const dist = Math.abs(dx)+Math.abs(dy);
+        if(dist>0 && dist<=state.magnetR){
+          // rapproche d'1 case vers la tête
+          if(Math.abs(dx) > Math.abs(dy)) f.x += (dx>0?-1:1);
+          else if(dy!==0) f.y += (dy>0?-1:1);
+          // garde dans la grille
+          f.x = (f.x+GRID_W)%GRID_W; f.y = (f.y+GRID_H)%GRID_H;
+        }
+      }
+    }
+
+    // Avance du serpent
+    const head = {x: state.snake[0].x + state.dir.x, y: state.snake[0].y + state.dir.y, effect:null, color:'#9ad1ff'};
+
+    // gestion murs
+    if(state.wrapWalls){
+      head.x = (head.x + GRID_W) % GRID_W;
+      head.y = (head.y + GRID_H) % GRID_H;
+    }
+
+    // collision mur si pas de wrap
+    if(!state.wrapWalls && (head.x<0||head.x>=GRID_W||head.y<0||head.y>=GRID_H)){
+      if(state.shields>0){
+        state.shields--; toast('Bouclier ! mur ignoré');
+        // annule le mouvement (reste sur place)
+        head.x = state.snake[0].x; head.y = state.snake[0].y;
+      } else { return gameOver(); }
+    }
+
+    // insert head
+    state.snake.unshift(head);
+
+    // nourriture ?
+    for(let i=0;i<state.foods.length;i++){
+      const f = state.foods[i];
+      if(f.x===head.x && f.y===head.y){
+        // score = 1 + bonus score
+        const bonus = (state.counts.score||0);
+        state.score += 1 + bonus;
+        addSegment();
+        state.foods.splice(i,1); i--; spawnFoods();
+      }
+    }
+
+    // si pas de croissance cette frame, enlève la queue
+    if(state.pending>0){ state.pending--; }
+    else { state.snake.pop(); }
+
+    // auto-collision ? (ignorer la case 0 qui est la tête)
+    for(let i=1;i<state.snake.length;i++){
+      if(state.snake[i].x===head.x && state.snake[i].y===head.y){
+        if(state.ghosts>0){ state.ghosts--; toast('Fantôme ! auto-collision ignorée'); break; }
+        if(state.shields>0){ state.shields--; toast('Bouclier ! auto-collision ignorée'); break; }
+        return gameOver();
+      }
+    }
+
+    updateUI();
+  }
+
+  function gameOver(){
+    state.over = true;
+    toast('💥 Game Over – R pour recommencer');
+  }
+
+  // === Rendu ===
+  function draw(){
+    // fond quadrillé subtil
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+    ctx.fillStyle = '#0b0f1f';
+    ctx.fillRect(0,0,cvs.width,cvs.height);
+    // grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let x=0;x<=GRID_W;x++){ ctx.moveTo(x*CELL+.5,0); ctx.lineTo(x*CELL+.5,GRID_H*CELL); }
+    for(let y=0;y<=GRID_H;y++){ ctx.moveTo(0,y*CELL+.5); ctx.lineTo(GRID_W*CELL,y*CELL+.5); }
+    ctx.stroke();
+
+    // foods
+    for(const f of state.foods){
+      drawCell(f.x,f.y,'#ff6b6b');
+      // halo
+      ctx.fillStyle = 'rgba(255,107,107,0.15)';
+      ctx.beginPath();
+      ctx.arc(f.x*CELL+CELL/2, f.y*CELL+CELL/2, CELL*0.7, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // snake
+    for(let i=state.snake.length-1;i>=0;i--){
+      const s = state.snake[i];
+      const col = i===0? '#9ad1ff' : (s.effect? keyToEffect(s.effect).color : '#7aa6ff');
+      drawCell(s.x,s.y,col, i===0);
+    }
+
+    // overlays
+    if(state.paused){ drawOverlay('PAUSE'); }
+    if(state.over){ drawOverlay('GAME OVER'); }
+  }
+
+  function drawCell(x,y,color,isHead=false){
+    const px = x*CELL, py = y*CELL;
+    // base
+    ctx.fillStyle = color;
+    ctx.fillRect(px+2,py+2,CELL-4,CELL-4);
+    // glossy head
+    if(isHead){
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(px+CELL*0.45, py+CELL*0.35, CELL*0.20, CELL*0.10, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawOverlay(text){
+    ctx.fillStyle = 'rgba(10,14,24,0.65)';
+    ctx.fillRect(0,0,cvs.width,cvs.height);
+    ctx.fillStyle = '#cfe4ff';
+    ctx.font = '700 44px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, cvs.width/2, cvs.height/2);
+    ctx.font = '14px system-ui, sans-serif';
+    ctx.fillText('Espace : pause · R : recommencer', cvs.width/2, cvs.height/2 + 26);
+  }
+
+  function updateUI(){
+    uiScore.textContent = state.score;
+    uiSpeed.textContent = state.speedMul.toFixed(2)+'x';
+    uiLen.textContent   = state.snake.length;
+    uiShield.textContent= state.shields;
+  }
+
+  // === Démarrage ===
+  newGame();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

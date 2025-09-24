@@ -1,0 +1,56 @@
+[
+    {
+    "slug": "battement-de-coeur",
+    "title": "Battement de coeur",
+    "year": 2025,
+    "type": "Interactif / Mini-Projet",
+    "short": "Petit projet pour savoir combien de fois votre coeur à battu depuis votre naissance",
+    "cover": "battement-de-coeur.svg",
+    "tags": [
+      " Coeur",
+      "Battement",
+      " Interactif",
+      "JS"
+    ]
+  },
+      {
+    "slug": "constellation",
+    "title": "Constellations",
+    "year": 2025,
+    "type": "Interactif / Mini-Projet",
+    "short": "Permet de générer des constellations fictives et d'interragir avec.",
+    "cover": "constellation.svg",
+    "tags": [
+      " Constellations",
+      "Aleatoire",
+      " Interactif",
+      "JS"
+    ]
+  },
+  {
+    "slug": "generateur-motif",
+    "title": "Générateur de motif",
+    "year": 2025,
+    "type": "generateur motif",
+    "short": "Générateur de motif en Javascript, quelques options disponibles",
+    "cover": "generateur-motif.svg",
+    "tags": [
+      "Random",
+      "Motif",
+      "JS"
+    ]
+  },
+    {
+    "slug": "snake",
+    "title": "Snake",
+    "year": 2025,
+    "type": "Mini jeu HTML5",
+    "short": "Prototype de mini-jeu Snake",
+    "cover": "snake.svg",
+    "tags": [
+      "Snake",
+      "Game",
+      "JS"
+    ]
+  }
+]

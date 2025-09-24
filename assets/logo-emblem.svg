@@ -1,0 +1,16 @@
+<!-- logo-emblem.svg (borderless) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF6A3D"/>
+      <stop offset="100%" stop-color="#FF2E00"/>
+    </linearGradient>
+  </defs>
+
+  <!-- AUCUNE bordure : pas de rect d'arrière-plan, pas de stroke -->
+  <circle cx="100" cy="100" r="88" fill="url(#grad)" stroke="none"/>
+
+  <!-- G stylisé -->
+  <path d="M100 55a45 45 0 1 0 0 90a35 35 0 1 1 0-70" fill="#ffffff" stroke="none"/>
+  <rect x="100" y="95" width="30" height="10" fill="#ffffff" stroke="none"/>
+</svg>
