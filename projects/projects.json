@@ -13,6 +13,20 @@
       "JS"
     ]
   },
+       {
+    "slug": "Oracle",
+    "title": "Oracle",
+    "year": 2025,
+    "type": "Interactif / Mini-Projet",
+    "short": "Prédit un destin aléatoire",
+    "cover": "../assets/oracle.png",
+    "tags": [
+      " Oracle",
+      "Aleatoire",
+      " Divination",
+      "JS"
+    ]
+  },
       {
     "slug": "constellation",
     "title": "Constellations",

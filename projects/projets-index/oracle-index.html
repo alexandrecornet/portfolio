@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oracle en ligne – One‑Page HTML</title>
+  <style>
+    :root{
+      --bg1:#0b1220; --bg2:#0b0f1a; --panel:#0f172a; --text:#e5e7eb; --muted:#94a3b8; --border:#1f2937;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+      color:var(--text);
+      background: radial-gradient(1200px 600px at 50% -200px, #27344a 0%, transparent 60%),
+                  linear-gradient(180deg, var(--bg1), var(--bg2));
+    }
+    .wrap{min-height:100%; display:flex; align-items:flex-start; justify-content:center; padding:32px}
+    .app{width:min(720px, 100%)}
+
+    /* --- Héro avec PNJ (PNG) fondu dans le fond --- */
+    .hero{
+      position:relative;
+      height:260px;
+     
+      overflow:hidden;
+      background:
+        radial-gradient(60% 100% at 50% 0%, rgba(167,139,250,.20), rgba(2,6,23,0) 70%),
+        linear-gradient(180deg, rgba(2,6,23,.6), rgba(2,6,23,.0));
+      box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    .hero::before{
+      content:"";
+      position:absolute; inset:0;
+      background-image:url('../../assets/oracle.png'); /* remplace par le chemin de ton PNG */
+      background-repeat:no-repeat; background-position: top center; background-size: 220px auto;
+      opacity:.8; mix-blend-mode:screen; filter: drop-shadow(0 6px 24px rgba(167,139,250,.25));
+      pointer-events:none;
+    }
+
+    .controls{ display:flex; gap:12px; justify-content:center; margin-top:16px; flex-wrap:wrap }
+    button{
+      appearance:none; border:1px solid var(--border); border-radius:16px; padding:14px 22px; font-weight:600;
+      background:linear-gradient(180deg,#111827,#0b1220); color:var(--text); cursor:pointer;
+      box-shadow:0 6px 20px rgba(0,0,0,.35);
+      transition:transform .08s ease, box-shadow .2s ease, background .2s ease;
+    }
+    button:hover{ transform:translateY(-1px); box-shadow:0 10px 28px rgba(0,0,0,.45) }
+    button:active{ transform:translateY(0) scale(.99) }
+    .secondary{ background:#0b1324 }
+
+    /* --- Panneau de divination --- */
+    .panel{ 
+      margin-top:18px; border:1px solid var(--border); border-radius:20px; background:rgba(15,23,42,.7);
+      backdrop-filter:saturate(1.3) blur(2px); padding:20px 22px; line-height:1.65; display:none;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .panel.show{ display:block; animation:fadeSlide .25s ease both }
+    .lead{ display:flex; gap:10px; align-items:flex-start }
+    .lead .icon{ width:20px; height:20px; flex:0 0 20px; opacity:.9 }
+    .muted{ color:var(--muted) }
+
+    @keyframes fadeSlide{ from{ opacity:0; transform:translateY(-6px) } to{ opacity:1; transform:translateY(0) } }
+    @media (prefers-reduced-motion: reduce){ .panel.show{ animation:none } button{ transition:none } }
+
+    /* --- Zone pour afficher les résultats des tests --- */
+    details.tests{ margin-top:16px; color:var(--muted) }
+    details.tests summary{ cursor:pointer }
+    details.tests pre{ white-space:pre-wrap; background:#0b1324; color:#cbd5e1; padding:12px; border-radius:12px; border:1px solid var(--border) }
+
+    /* --- Animation feu mauve --- */
+.fire-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1; /* derrière tout */
+  background: radial-gradient(circle at 50% 80%, rgba(168,85,247,0.4), transparent 70%),
+              radial-gradient(circle at 40% 90%, rgba(192,132,252,0.3), transparent 70%),
+              radial-gradient(circle at 60% 85%, rgba(147,51,234,0.35), transparent 70%);
+  background-blend-mode: screen;
+  animation: fireMove 6s infinite linear;
+  filter: blur(40px) saturate(1.5);
+}
+
+@keyframes fireMove {
+  0%   { background-position: 50% 100%, 40% 100%, 60% 100%; }
+  50%  { background-position: 52% 90%, 38% 95%, 62% 92%; }
+  100% { background-position: 50% 100%, 40% 100%, 60% 100%; }
+}
+
+/* --- Feu mauve réaliste (filtre SVG) --- */
+.fire-realistic {
+  position: fixed;
+  inset: 0;
+  z-index: -1;          /* derrière tout */
+  pointer-events: none;
+  /* Plusieurs nappes mauves au bas de l'écran + un fondu vertical */
+  background:
+    radial-gradient(60% 140% at 50% 100%, rgba(191, 90, 255, 0.85) 0%, rgba(140, 39, 255, 0.40) 28%, rgba(90, 0, 140, 0.08) 58%, transparent 66%),
+    radial-gradient(42% 100% at 28% 100%, rgba(199, 120, 255, 0.65), transparent 62%),
+    radial-gradient(42% 100% at 72% 100%, rgba(199, 120, 255, 0.65), transparent 62%),
+    linear-gradient(180deg, rgba(14, 0, 28, 0), rgba(14, 0, 28, 1) 72%);
+  /* Le filtre SVG déforme ces nappes comme une flamme */
+  filter: url(#purpleFireNoise);
+  mix-blend-mode: screen;
+  animation: flameFlicker 1.8s ease-in-out infinite;
+}
+@keyframes flameFlicker {
+  0%, 100% { opacity: .95; transform: translateY(0) }
+  50%      { opacity: 1;   transform: translateY(-2px) }
+}
+
+/* Fallback pur CSS si le navigateur bloque les filtres SVG (moins organique) */
+@supports not (filter: url(#purpleFireNoise)) {
+.fire-realistic {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 160% at 50% 100%, rgba(191,90,255,0.85) 0%, rgba(140,39,255,0.4) 30%, transparent 70%),
+    radial-gradient(40% 120% at 30% 100%, rgba(199,120,255,0.6), transparent 70%),
+    radial-gradient(40% 120% at 70% 100%, rgba(199,120,255,0.6), transparent 70%),
+    linear-gradient(180deg, transparent, #0b1220 80%);
+  filter: url(#purpleFireNoise);
+  mix-blend-mode: screen;
+}
+
+  @keyframes cssOnlyFlame {
+    0%   { background-position: center 110%, center 110%, center }
+    50%  { background-position: center 106%, center 100%, center }
+    100% { background-position: center 110%, center 110%, center }
+  }
+}
+
+  </style>
+</head>
+<body>
+  <div class="fire-realistic"></div>
+
+  <div class="fire-bg"></div>
+
+  <div class="wrap">
+    <main class="app">
+      <!-- PNJ fondu en haut -->
+      <section class="hero" aria-label="Oracle">
+      </section>
+
+      <!-- Boutons d'action : Divination & Relancer -->
+      <div class="controls" aria-label="Contrôles">
+        <button id="btnDivination" title="Lancer une divination">🔮 Divination</button>
+             <button id="btnShare">📤 Partager</button>
+      </div>
+
+      <!-- Panneau de résultat (apparaît sous les boutons) -->
+      <section id="panel" class="panel" aria-live="polite" aria-atomic="true">
+        <div class="lead">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.64 5.64l2.12 2.12m8.48 8.48l2.12 2.12m0-12.72-2.12 2.12M7.76 16.24 5.64 18.36"/><circle cx="12" cy="12" r="4"/></svg>
+          <div>
+            <div id="prophecy">Le voile hésite encore… appuie sur Divination.</div>
+            <div class="muted" id="hint"></div>
+          </div>
+        </div>
+      </section>
+
+
+   
+    </main>
+  </div>
+
+  <script>
+    // --- Banque de destins (aléatoire uniquement) ---
+const lines = [
+  "Le sable du sablier colle aujourd'hui : le Temps a transpiré. Il en résulte une heure incertaine, lourde et moite, où chaque seconde hésite avant de tomber. Ce n’est pas un arrêt mais une fatigue, un souffle brûlant dans la gorge de l’éternité. Tu peux essayer de précipiter le flux, mais sache que ce jour sera marqué par des heures gluantes, où l’attente sera plus dense que l’action.",
+  
+  "Un pigeon s'incline trois fois ; c'est un oui timide de l'univers. Mais pas un oui franc, ni triomphal : plutôt une approbation fragile, comme un fil de laine prêt à se rompre. Les ailes de cet oiseau portent une vérité légère, qu’il faudrait écouter dans le froissement du vent plutôt que dans les cris des foules. Ce geste discret est pourtant plus solide que mille signatures officielles.",
+  
+  "Ta théière connaît déjà la réponse. Demande-lui en silence. Le métal ou la céramique ont conservé, au fil des infusions, les questions que tu ne voulais pas poser à voix haute. Dans la vapeur qui s’élève, les formes te diront ce que tu craignais : que parfois, les objets nous comprennent mieux que les humains. Incline-toi, respire profondément, et laisse le parfum t’enseigner ce que la parole ne sait dire.",
+  
+  "Quatre portes s'ouvrent, mais tu n'as que deux mains : choisis avec les pieds. Car les choix trop rationnels ferment souvent les plus beaux passages. Les deux premières portes semblent brillantes, ornées d’or et de promesses. Les deux autres sont bancales, grinçantes, couvertes de poussière. Pourtant, ce sont elles qui mènent aux routes les plus fertiles. Laisse ton corps maladroit guider ton esprit, et avance sans plan, car l’imprévu t’attend derrière la charnière rouillée.",
+  
+  "La lune griffonne ton prénom dans la buée d'une vitre cosmique. Elle écrit mal, avec une calligraphie tremblante, mais l’intention est claire : tu es regardé, nommé, et donc relié. Les étoiles, témoins discrets, n’effacent pas ce geste. C’est une invitation à te souvenir que tu as ta place, non pas gravée dans le marbre, mais tracée dans l’éphémère. Une écriture qui se dissoudra, mais qui aura existé pour toi, et toi seul.",
+  
+  "Tu vaincras un ennemi juré : une chaussette orpheline depuis 2011. Longtemps, elle a hanté tes tiroirs, tes paniers de linge, ton esprit fatigué. Elle surgissait toujours seule, comme pour rappeler une absence. Bientôt, tu comprendras qu’elle n’était pas une perte, mais une épreuve, une énigme laissée là pour éprouver ta persévérance. Quand tu la retrouveras — ou l’enterreras symboliquement — tu réaliseras que tu as mis fin à une bataille minuscule mais acharnée, qui te reliait au temps perdu.",
+  
+  "Une vérité éclatera comme un ballon de baudruche rempli de mayonnaise. Ce sera grotesque, collant, embarrassant, et tu ne sauras pas si tu dois rire ou pleurer. Pourtant, ce désordre visqueux te laissera entre les doigts une certitude que tu n’oserais jamais imaginer dire à voix haute. Parfois, la révélation n’a pas de noblesse. Parfois, elle s’annonce en éclaboussures blanches, avec une odeur bizarre, mais elle nettoie quand même ce qui devait être dit.",
+  
+  "On te confondra avec un influenceur pour plantes d'intérieur — accepte les boutures. Ton aura verte deviendra une plaisanterie sérieuse. Les gens te demanderont conseil sur la lumière, l’eau, le terreau, alors que tu n’as peut-être jamais possédé qu’un cactus maladif. Mais dans ce rôle, tu découvriras que tu transmets une croissance plus large : celle d’idées, de gestes simples qui survivent mieux que les slogans. Et chaque bouture confiée sera une promesse de persistance.",
+  
+  "Tu deviendras légende locale après avoir dompté une imprimante récalcitrante. Elle aura résisté à mille esprits, avalé des feuilles, craché des bourrages. Mais toi, par un mélange de patience et d’injures créatives, tu la soumettras à ta volonté. Ce triomphe technique semblera banal, mais on s’en souviendra. Les récits grossiront. Dans les cafés, on dira que tu as parlé à la machine dans sa langue secrète. Ce sera exagéré, mais qu’importe : une gloire mécanique est aussi une gloire.",
+  
+  "Les vents changent : épargne ton souffle et écoute ceux de la Terre avant d'agir. Trop souvent, tes mots veulent précéder les mouvements, mais ce jour-là, ce sont les courants qui commanderont. Une brise minuscule peut porter un message, un ouragan peut clore une dispute. Inspire profondément : dans ce murmure invisible se trouve plus de vérité que dans des pages de discours. Et si tu sais entendre, tu n’auras pas besoin de parler.",
+  
+  "Tu choisiras la réparation plutôt que l'achat. Une vis sauvera ta semaine. Cette petite décision, apparemment dérisoire, s’élèvera en symbole. En refusant de remplacer, tu redonneras vie. Et dans le métal ajusté, dans la pièce réassemblée, tu verras ton reflet : fissuré mais solide, ancien mais encore utile. Ta main aura prolongé un objet, mais aussi affirmé une philosophie : préserver, au lieu de consommer jusqu’à l’oubli.",
+  
+  "Un orage parlera plus clair qu'un discours. L'eau t'indiquera la juste direction. Quand le ciel s’assombrira et que la pluie déferlera, ne cherche pas d’abri. Laisse la foudre ponctuer tes doutes, laisse le tonnerre écraser tes hésitations. Dans ce vacarme, il y a une langue sans mensonge, une force qui tranche ce que mille phrases humaines n’osent dire. L’orage ne ment pas : il choisit, il fracture, il éclaire.",
+  
+  "Ce que tu jettes revient par la mer : transforme avant de renoncer. Les vagues n’oublient rien. Elles ramènent toujours ce que l’on croit effacé, sous des formes différentes, abîmées mais reconnaissables. La bouteille jetée, l’idée abandonnée, la parole coupée : tout refait surface un jour. La mer te le rendra, parfois comme un avertissement, parfois comme une seconde chance. Apprends donc à transformer avant de rejeter, car rien ne disparaît vraiment.",
+  
+  "Un fil d'actualité te poussera à tendre la main à quelqu'un tout près. Dans la masse infinie d’images, de phrases vides et de bruits numériques, une publication surgira comme une étincelle. Ce ne sera pas un hasard : c’est l’algorithme qui joue à deviner ce dont tu as besoin, mais aussi le destin qui profite du canal. Si tu tends la main à ce moment précis, tu comprendras que l’écran, parfois, n’est qu’une porte vers une proximité réelle.",
+  
+  "Un matin, la lumière te mettra au courant de ce que tu savais déjà. Elle ne viendra pas comme une révélation explosive, mais comme un voile retiré doucement d’un objet familier. Tu verras l’évidence, non pas parce qu’elle apparaîtra neuve, mais parce qu’elle cessera d’être cachée. Et tu te demanderas pourquoi il t’a fallu tant de nuits pour accepter ce qui brillait déjà en plein jour.",
+  
+  "En marchant lentement, tu arriveras plus vite à l'endroit important. Les pas précipités ne mènent qu’aux erreurs répétées. Mais en ralentissant, en goûtant chaque seconde, tu ouvriras des raccourcis invisibles. La lenteur n’est pas paresse : c’est une manière d’habiter le temps, de laisser les détours te conduire plus droit que les lignes droites. Le chemin s’étendra, mais ton cœur arrivera avant toi.",
+  
+  "La réponse s'assiéra à tes côtés quand tu cesseras de la chercher. Tant que tu cours après elle, elle se cache, malicieuse, derrière des ombres toujours nouvelles. Mais quand tu te résoudras à t’asseoir, à respirer sans attente, tu entendras le froissement d’un vêtement discret. Elle sera là, posée comme une compagne silencieuse. Et tu comprendras qu’elle n’avait jamais cessé de t’accompagner, mais que ton agitation t’empêchait de la voir.",
+  
+  "Tu entendras un silence à plusieurs couches : garde-en une pour plus tard. Le monde croit que le silence est un vide, mais il a ses épaisseurs, ses textures. Il y a le silence de la pause, le silence de l’abandon, le silence rempli d’échos invisibles. Si tu en retiens une tranche, soigneusement pliée comme une lettre, tu pourras la ressortir dans un moment d’urgence. Car parfois, un silence bien conservé sauve plus qu’une parole.",
+  
+  "Ce soir, la lune sera une gomme. Efface une inquiétude. Sa rondeur blanche passera sur ton esprit comme une main douce qui caresse un tableau noir. Choisis bien l’inquiétude que tu veux voir disparaître, car elle ne reviendra pas telle quelle. L’astre ne pardonne qu’une tache à la fois. Mais si tu oses confier ton fardeau, tu verras ton ciel redevenir clair, au moins pour une nuit."
+];
+
+
+    const panel = document.getElementById('panel');
+    const prophecyEl = document.getElementById('prophecy');
+    const hintEl = document.getElementById('hint');
+
+    function pick(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+    function revealPanel(){ if(!panel.classList.contains('show')) panel.classList.add('show'); }
+
+    function generate(){
+      const base = pick(lines);
+      // 40% de chance d'ajouter une seconde couche
+      
+      const text = base;
+      prophecyEl.textContent = text;
+      hintEl.textContent = "";
+      revealPanel();
+    }
+
+    function reroll(){
+      if(!panel.classList.contains('show')) return generate();
+      const current = prophecyEl.textContent || "";
+      let next = pick(lines);
+      // évite de répéter mot pour mot
+      let guard = 0; while(next === current && guard++ < 8){ next = pick(lines); }
+      prophecyEl.textContent = next;
+      hintEl.textContent = "Relancé.";
+    }
+
+    document.getElementById('btnDivination').addEventListener('click', generate);
+
+      document.getElementById('btnShare').addEventListener('click', () => {
+    const text = document.getElementById('prophecy').textContent.trim();
+    navigator.clipboard.writeText(text + "\\n" + window.location.href)
+      .then(() => alert("Prophétie copiée, tu peux la coller où tu veux ✨"))
+      .catch(() => alert("Impossible de copier, copie manuelle : " + text));
+  });
+    
+  </script>
+
+  <!-- Défs SVG pour le bruit organique du feu -->
+<svg width="0" height="0" style="position:absolute">
+  <filter id="purpleFireNoise">
+    <!-- bruit fractal “organique” -->
+    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.06" numOctaves="3" seed="7" result="noise">
+      <animate attributeName="baseFrequency"
+               values="0.010 0.05; 0.016 0.075; 0.010 0.05"
+               dur="6s" repeatCount="indefinite" />
+    </feTurbulence>
+
+    <!-- Déformation de l'image de fond par le bruit -->
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="60" xChannelSelector="R" yChannelSelector="G">
+      <animate attributeName="scale" values="45;70;45" dur="6s" repeatCount="indefinite" />
+    </feDisplacementMap>
+
+    <!-- Laisse les couleurs d'origine (mauves) des gradients -->
+  </filter>
+</svg>
+
+<svg width="0" height="0" style="position:absolute">
+  <filter id="purpleFireNoise">
+    <!-- bruit fractal animé en continu -->
+    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.06" numOctaves="3" seed="7" result="noise">
+      <animate attributeName="baseFrequency"
+               values="0.012 0.06; 0.015 0.08; 0.018 0.05; 0.012 0.06"
+               dur="15s"
+               repeatCount="indefinite" />
+    </feTurbulence>
+
+    <!-- déformation permanente -->
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="60" xChannelSelector="R" yChannelSelector="G">
+      <animate attributeName="scale"
+               values="55;70;65;55"
+               dur="12s"
+               repeatCount="indefinite" />
+    </feDisplacementMap>
+  </filter>
+</svg>
+
+</body>
+</html>
+
